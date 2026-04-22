@@ -29,7 +29,7 @@ jobs:
 
       - name: Create React Native Project
         run: |
-          npx react-native@0.73.0 init MagnetMoneyBuild --template react-native-template-typescript --skip-install
+          npx react-native@0.73.0 init MagnetMoneyBuild --skip-install
           cp UserApp.tsx MagnetMoneyBuild/App.tsx
           cp package.json MagnetMoneyBuild/package.json
 
@@ -40,17 +40,29 @@ jobs:
 
       - name: Create Keystore
         run: |
-          mkdir -p MagnetMoneyBuild/android/app
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > MagnetMoneyBuild/android/app/magnetmoney.keystore
 
-      - name: Configure Signing
+      - name: Add Signing to build.gradle
         run: |
-          cat >> MagnetMoneyBuild/android/gradle.properties << EOF
-          MYAPP_RELEASE_STORE_FILE=magnetmoney.keystore
-          MYAPP_RELEASE_KEY_ALIAS=${{ secrets.KEY_ALIAS }}
-          MYAPP_RELEASE_STORE_PASSWORD=${{ secrets.KEY_STORE_PASSWORD }}
-          MYAPP_RELEASE_KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}
+          cd MagnetMoneyBuild/android/app
+          cat > signing.gradle << 'EOF'
+          android {
+              signingConfigs {
+                  release {
+                      storeFile file("magnetmoney.keystore")
+                      storePassword "magnetmoney123"
+                      keyAlias "magnetmoney"
+                      keyPassword "magnetmoney123"
+                  }
+              }
+              buildTypes {
+                  release {
+                      signingConfig signingConfigs.release
+                  }
+              }
+          }
           EOF
+          echo "apply from: 'signing.gradle'" >> build.gradle
 
       - name: Make Gradlew Executable
         run: chmod +x MagnetMoneyBuild/android/gradlew
