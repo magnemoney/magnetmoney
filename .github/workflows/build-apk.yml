@@ -1,81 +1,18 @@
-name: Build MagnetMoney APK
+android {
+    ...
+    signingConfigs {
+        release {
+            storeFile file("my-release-key.keystore")
+            storePassword "android"
+            keyAlias "my-key-alias"
+            keyPassword "android"
+        }
+    }
 
-on:
-  push:
-    branches: [main]
-  workflow_dispatch:
-
-jobs:
-  build-android:
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
-
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Create React Native Project
-        run: |
-          npx @react-native-community/cli@13.6.9 init MagnetMoneyBuild --version 0.73.0 --skip-install --directory MagnetMoneyBuild
-          cp UserApp.tsx MagnetMoneyBuild/App.tsx
-
-      - name: Install Extra Dependencies
-        run: |
-          cd MagnetMoneyBuild
-          npm install
-          npm install @react-native-async-storage/async-storage@1.21.0 react-native-svg@14.1.0
-
-      - name: Create Keystore
-        run: |
-          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > MagnetMoneyBuild/android/app/magnetmoney.keystore
-
-      - name: Add Signing to build.gradle
-        run: |
-          cd MagnetMoneyBuild/android/app
-          cat > signing.gradle << 'EOF'
-          android {
-              signingConfigs {
-                  release {
-                      storeFile file("magnetmoney.keystore")
-                      storePassword "magnetmoney123"
-                      keyAlias "magnetmoney"
-                      keyPassword "magnetmoney123"
-                  }
-              }
-              buildTypes {
-                  release {
-                      signingConfig signingConfigs.release
-                  }
-              }
-          }
-          EOF
-          echo "" >> build.gradle
-          echo "apply from: 'signing.gradle'" >> build.gradle
-
-      - name: Make Gradlew Executable
-        run: chmod +x MagnetMoneyBuild/android/gradlew
-
-      - name: Build Release APK
-        run: |
-          cd MagnetMoneyBuild/android
-          ./gradlew assembleRelease --no-daemon
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: MagnetMoney-APK
-          path: MagnetMoneyBuild/android/app/build/outputs/apk/release/app-release.apk
-          retention-days: 30
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+            minifyEnabled false
+        }
+    }
+}
